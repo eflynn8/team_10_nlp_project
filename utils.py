@@ -23,65 +23,71 @@ def preprocess(sent):
 
 def extract_features(data):
 		# pass
-		features = {}
+
 		id_to_lines = {}
 		id_to_characters = {}
 		with open(data, encoding='utf-8', errors='ignore') as file:
 			for line in file:
-				line = line.strip().split("+++$+++")
-				id_to_lines[line[2]] = ""
-				id_to_characters[line[2]] = set()
-			file.close()
+				line = line.strip().split('+++$+++')
+				movie_id = line[2][2:].strip()
+				# movie_id = movie_id[:-1]
+				id_to_lines[movie_id] = ""
+				id_to_characters[movie_id] = set()
+		file.close()
+		num_movies = len(id_to_lines)
+		features = np.zeros((num_movies, 8))
+		i = 0
+		prev = ""
 		with open(data, encoding='utf-8', errors='ignore') as file:
 			for line in file:
-				line = line.strip().split("+++$+++")
-				id_to_lines[line[2]] = id_to_lines[line[2]] + str(line[4]) + " "
-				id_to_characters[line[2]].add(line[3])
-			file.close()
-		# print(id_to_lines)
+				line = line.strip().split('+++$+++')
+				# print(id_to_lines)
+				movie_id = line[2][2:].strip()
+				# movie_id = movie_id[:-1]
+				id_to_lines[movie_id] = id_to_lines[movie_id] + str(line[4]) + " "
+				id_to_characters[movie_id].add(line[3])
+				if movie_id != prev:
+					features[i][0] = movie_id
+					i += 1
+					prev = movie_id
+		file.close()
 
-		for key in id_to_lines.keys():
-			pos = preprocess(id_to_lines[key])
+		for row in features:
+			pos = preprocess(id_to_lines[str(int(row[0]))])
 			num_words = len(pos)
 			c = Counter(x[1] for x in pos)
-			features[key] = [0, 0, 0, 0, 0, 0, 0]
-			features[key][0] = (c.get('JJ', 0) + c.get('JJR', 0) + c.get('JJS', 0)) / (c.get('NN', 0) + c.get('NNS', 0) + c.get('NNP', 0) + c.get('NNPS', 0))
-			features[key][1] =(c.get('PRP', 0) + c.get('PRP$', 0)) / num_words
-			features[key][2] = (c.get('WDT', 0) + c.get('WP', 0) + c.get('WP$', 0) + c.get('WRB', 0)) / num_words
+			row[1] = (c.get('JJ', 0) + c.get('JJR', 0) + c.get('JJS', 0)) / (c.get('NN', 0) + c.get('NNS', 0) + c.get('NNP', 0) + c.get('NNPS', 0))
+			row[2] =(c.get('PRP', 0) + c.get('PRP$', 0)) / num_words
+			row[3] = (c.get('WDT', 0) + c.get('WP', 0) + c.get('WP$', 0) + c.get('WRB', 0)) / num_words
 
 			nlp = en_core_web_sm.load()
-			script = nlp(id_to_lines[key])
+			script = nlp(id_to_lines[str(int(row[0]))])
 			labels = [x.label_ for x in script.ents]
 			entities = Counter(labels)
-			features[key][3] = entities.get('LOC', 0)
-			features[key][4] = entities.get('ORG', 0)
+			row[4] = entities.get('LOC', 0)
+			row[5] = entities.get('ORG', 0)
 
-			features[key][5] = len(id_to_characters[key])
-			features[key][6] = (c.get('UH', 0) / num_words)
+			row[6] = len(id_to_characters[str(int(row[0]))])
+			row[7] = (c.get('UH', 0) / num_words)
 
-		# print(features)
-
-		# calc mean and std dev
-		thresholds = [0, 0, 0, 0, 0, 0, 0]
+		thresholds = np.zeros((7, 5))
+		mean = np.mean(features[:,1:], 0)
+		std = np.std(features[:,1:], 0)
 		for i in range (7):
-			mean = sum(features[key][i] for key in features.keys()) / len(features)
-			std = abs(sum(features[key][i] - mean for key in features.keys()))
-			std = sqrt(pow(std, 2) / len(features))
-			thresholds[i] = [mean - 2*std, mean - std, mean + std, mean + 2*std, mean + 2*std]
+			thresholds[i] = [mean[i] - 2*std[i], mean[i] - std[i], mean[i] + std[i], mean[i] + 2*std[i], mean[i] + 2*std[i]]
 
 		# discretize features
-		for key in features.keys():
-			for i in range(len(features[key])):
-				if features[key][i] < thresholds[i][0]:
-					features[key][i] = 'VL'
-				elif features[key][i] < thresholds[i][1]:
-					features[key][i] = 'L'
-				elif features[key][i] < thresholds[i][2]:
-					features[key][i] = 'AVG'
-				elif features[key][i] < thresholds[i][3]:
-					features[key][i] = 'H'
+		for i in range(num_movies):
+			for j in range(7):
+				if features[i][j] < thresholds[j][0]:
+					features[i][j] = 0
+				elif features[i][j] < thresholds[j][1]:
+					features[i][j] = 1
+				elif features[i][j] < thresholds[j][2]:
+					features[i][j] = 2
+				elif features[i][j] < thresholds[j][3]:
+					features[i][j] = 3
 				else:
-					features[key][i] = 'VH'
+					features[i][j] = 4
 
-		# print(features)
 		return features
