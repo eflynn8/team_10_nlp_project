@@ -1,0 +1,21 @@
+Packages required to be installed:
+
+- en-core-web-sm==2.2.5
+- nltk==3.4.5
+- numpy==1.18.2
+- pip==19.2.3
+- spacy==2.2.4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
