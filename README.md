@@ -2,6 +2,7 @@
 
 To generate the results from the Naive Bayes classifier,run the following command from the Models directory: python3 main.py
 
+All files to run Jupyter notebooks can be found in Upload_Files
 Results for the models described in the paper can be found in model_interpretation.ipynb. The first model is the MLP trained on continuous features. The files that need to be uploaded to run this notebook are included in this repo and the file location and name is given in the notebook. Following the results of the model on train and test data, the interpretability section includes construction of confusion matrices and heatmap visualizations.
 The second model is the LSTM with word embeddings. The necessary files are also listed in that notebook.
 
